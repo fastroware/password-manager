@@ -3,41 +3,40 @@ name: Build & Release EXE
 on:
   push:
     tags:
-      - 'v*' # Contoh: v1.0.0
+      - 'v*'  # Trigger saat push tag seperti v1.0.0
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Code
+      - name: 🧾 Checkout Source Code
         uses: actions/checkout@v3
 
-      - name: Setup Python
+      - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build with PyInstaller
+      - name: 🛠️ Build EXE with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile password_manager.py
-        shell: bash
+          pyinstaller --noconfirm --onefile --windowed password_manager.py
 
-      - name: Rename EXE
+      - name: 📁 Rename & Move EXE
         run: |
           mkdir dist_output
-          copy dist\password_manager.exe dist_output\password-manager-${{ github.ref_name }}.exe
+          cp dist/password_manager.exe dist_output/password-manager-${{ github.ref_name }}.exe
 
-      - name: Upload to GitHub Release
+      - name: 🚀 Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ github.ref_name }}
+          name: "Password Manager v${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           body: |
             🚀 **New Release: ${{ github.ref_name }}**
