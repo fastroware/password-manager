@@ -130,14 +130,14 @@ To add a new language:
 ## 🔍 Technical Details
 
 This application uses:
-- Python 3.6+
+- Python 3.11+
 - Tkinter for the GUI
 - Cryptography library for secure encryption
 - JSON for data structure
 
 ## ⚙️ System Requirements
 
-- Python 3.6 or higher
+- Python 3.11 or higher
 - Operating System: Windows, macOS, or Linux
 - Minimal disk space required (< 10MB excluding your password data)
 
