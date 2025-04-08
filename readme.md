@@ -1,8 +1,12 @@
 # Password Manager
 
-![Status](https://img.shields.io/badge/status-stable-green)
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
-![License](https://img.shields.io/badge/license-MIT-yellow)
+<!-- ![Status](https://img.shields.io/badge/status-stable-green) -->
+<!-- ![Version](https://img.shields.io/badge/version-1.0.0-blue) -->
+<!-- ![License](https://img.shields.io/badge/license-MIT-yellow) -->
+![Build Status](https://github.com/fastroware/password-manager/actions/workflows/build-release.yml/badge.svg)
+![Latest Version](https://img.shields.io/github/v/tag/fastroware/password-manager?label=version)
+![License](https://img.shields.io/github/license/fastroware/password-manager)
+![Downloads](https://img.shields.io/github/downloads/fastroware/password-manager/total)
 
 ## ⚠️ DISCLAIMER
 
