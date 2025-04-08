@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 20 
+    timeout-minutes: 30
 
     steps:
       - name: 🧾 Checkout Source Code
@@ -19,7 +19,7 @@ jobs:
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'  
 
       - name: 📦 Install Dependencies
@@ -27,39 +27,349 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
+          pip install pywin32 requests
         timeout-minutes: 5
+        
+      - name: 🔍 Get Version Info
+        id: version
+        run: |
+          $VERSION = "${{ github.ref_name }}" -replace "v", ""
+          echo "VERSION=$VERSION" | Out-File -FilePath $env:GITHUB_ENV -Append
+        shell: pwsh
+
+      - name: 📝 Create Version Info
+        run: |
+          $VersionInfoContent = @"
+          # UTF-8
+          VSVersionInfo(
+            ffi=FixedFileInfo(
+              filevers=(${{ env.VERSION }}.replace('.', ',') + ',0'),
+              prodvers=(${{ env.VERSION }}.replace('.', ',') + ',0'),
+              mask=0x3f,
+              flags=0x0,
+              OS=0x40004,
+              fileType=0x1,
+              subtype=0x0,
+              date=(0, 0)
+            ),
+            kids=[
+              StringFileInfo(
+                [
+                  StringTable(
+                    u'040904B0',
+                    [StringStruct(u'CompanyName', u'fastroware'),
+                    StringStruct(u'FileDescription', u'Password Manager'),
+                    StringStruct(u'FileVersion', u'${{ env.VERSION }}'),
+                    StringStruct(u'InternalName', u'password_manager'),
+                    StringStruct(u'LegalCopyright', u'© 2025 fastroware. All rights reserved.'),
+                    StringStruct(u'OriginalFilename', u'password_manager.exe'),
+                    StringStruct(u'ProductName', u'Password Manager'),
+                    StringStruct(u'ProductVersion', u'${{ env.VERSION }}')])
+                ]),
+              VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
+            ]
+          )
+          "@
+          
+          Set-Content -Path "version_info.txt" -Value $VersionInfoContent
+        shell: pwsh
+
+      - name: 🛠️ Create Installer Script
+        run: |
+          $InstallerScript = @"
+          import sys
+          import os
+          import tkinter as tk
+          from tkinter import filedialog, messagebox
+          import shutil
+          import winreg
+          import ctypes
+          from pathlib import Path
+
+          def is_admin():
+              try:
+                  return ctypes.windll.shell32.IsUserAnAdmin()
+              except:
+                  return False
+
+          def create_shortcut(target_path, shortcut_path, working_dir=None, icon_path=None):
+              import pythoncom
+              from win32com.client import Dispatch
+              
+              shell = Dispatch('WScript.Shell')
+              shortcut = shell.CreateShortCut(shortcut_path)
+              shortcut.Targetpath = target_path
+              if working_dir:
+                  shortcut.WorkingDirectory = working_dir
+              if icon_path:
+                  shortcut.IconLocation = icon_path
+              shortcut.save()
+
+          class InstallerGUI:
+              def __init__(self, root):
+                  self.root = root
+                  self.root.title("Password Manager Installer")
+                  self.root.geometry("600x450")
+                  self.root.resizable(False, False)
+                  
+                  # Set application title and info
+                  tk.Label(root, text="Password Manager v${{ env.VERSION }}", font=("Arial", 16, "bold")).pack(pady=20)
+                  tk.Label(root, text="Secure Password Management Application", font=("Arial", 12)).pack()
+                  
+                  # Frame for installation path
+                  path_frame = tk.Frame(root)
+                  path_frame.pack(pady=20, fill="x", padx=30)
+                  
+                  tk.Label(path_frame, text="Installation Path:").grid(row=0, column=0, sticky="w")
+                  
+                  self.path_var = tk.StringVar()
+                  self.path_var.set(os.path.join(os.environ["ProgramFiles"], "Password Manager"))
+                  
+                  path_entry = tk.Entry(path_frame, textvariable=self.path_var, width=50)
+                  path_entry.grid(row=0, column=1, padx=5)
+                  
+                  browse_btn = tk.Button(path_frame, text="Browse", command=self.browse_path)
+                  browse_btn.grid(row=0, column=2)
+                  
+                  # Options
+                  options_frame = tk.LabelFrame(root, text="Options")
+                  options_frame.pack(pady=10, fill="x", padx=30)
+                  
+                  self.desktop_shortcut = tk.BooleanVar(value=True)
+                  tk.Checkbutton(options_frame, text="Create Desktop Shortcut", variable=self.desktop_shortcut).pack(anchor="w", pady=5)
+                  
+                  self.start_menu = tk.BooleanVar(value=True)
+                  tk.Checkbutton(options_frame, text="Add to Start Menu", variable=self.start_menu).pack(anchor="w", pady=5)
+                  
+                  # Install button
+                  install_btn = tk.Button(root, text="Install", width=20, height=2, command=self.install)
+                  install_btn.pack(pady=30)
+                  
+                  # Version and copyright
+                  tk.Label(root, text="Version ${{ env.VERSION }}", font=("Arial", 8)).pack(side="bottom", pady=5)
+                  tk.Label(root, text="© 2025 YourCompany. All rights reserved.", font=("Arial", 8)).pack(side="bottom")
+              
+              def browse_path(self):
+                  path = filedialog.askdirectory()
+                  if path:
+                      self.path_var.set(os.path.join(path, "Password Manager"))
+              
+              def install(self):
+                  install_path = self.path_var.get()
+                  
+                  # Create directory if not exists
+                  try:
+                      os.makedirs(install_path, exist_ok=True)
+                  except:
+                      messagebox.showerror("Error", "Failed to create installation directory. Try running as administrator.")
+                      return
+                  
+                  # Copy the executable to the install path
+                  exe_path = os.path.join(install_path, "password_manager.exe")
+                  try:
+                      shutil.copy(sys.argv[0], exe_path)
+                  except:
+                      messagebox.showerror("Error", "Failed to copy application files. Make sure you have the necessary permissions.")
+                      return
+                  
+                  # Create desktop shortcut
+                  if self.desktop_shortcut.get():
+                      desktop_path = os.path.join(os.environ["USERPROFILE"], "Desktop")
+                      shortcut_path = os.path.join(desktop_path, "Password Manager.lnk")
+                      try:
+                          create_shortcut(exe_path, shortcut_path, working_dir=install_path, icon_path=exe_path)
+                      except:
+                          messagebox.showwarning("Warning", "Could not create desktop shortcut.")
+                  
+                  # Create start menu shortcut
+                  if self.start_menu.get():
+                      start_menu_path = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs")
+                      start_menu_dir = os.path.join(start_menu_path, "Password Manager")
+                      os.makedirs(start_menu_dir, exist_ok=True)
+                      shortcut_path = os.path.join(start_menu_dir, "Password Manager.lnk")
+                      try:
+                          create_shortcut(exe_path, shortcut_path, working_dir=install_path, icon_path=exe_path)
+                      except:
+                          messagebox.showwarning("Warning", "Could not create start menu shortcut.")
+                  
+                  # Add to registry for uninstall
+                  try:
+                      if is_admin():
+                          key_path = r"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PasswordManager"
+                          with winreg.CreateKey(winreg.HKEY_LOCAL_MACHINE, key_path) as key:
+                              winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Password Manager")
+                              winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "${{ env.VERSION }}")
+                              winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "YourCompany")
+                              winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_path)
+                              winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, exe_path)
+                      else:
+                          # For non-admin installs, use HKEY_CURRENT_USER
+                          key_path = r"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PasswordManager"
+                          with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                              winreg.SetValueEx(key, "DisplayName", 0, winreg.REG_SZ, "Password Manager")
+                              winreg.SetValueEx(key, "DisplayVersion", 0, winreg.REG_SZ, "${{ env.VERSION }}")
+                              winreg.SetValueEx(key, "Publisher", 0, winreg.REG_SZ, "YourCompany")
+                              winreg.SetValueEx(key, "InstallLocation", 0, winreg.REG_SZ, install_path)
+                              winreg.SetValueEx(key, "DisplayIcon", 0, winreg.REG_SZ, exe_path)
+                  except:
+                      # Non-critical error, just show warning
+                      messagebox.showwarning("Warning", "Could not register application for uninstall.")
+                  
+                  messagebox.showinfo("Installation Complete", f"Password Manager has been installed successfully to {install_path}")
+                  
+                  # Ask if user wants to run the application now
+                  if messagebox.askyesno("Installation Complete", "Do you want to run Password Manager now?"):
+                      os.startfile(exe_path)
+                  
+                  self.root.destroy()
+
+          if __name__ == "__main__":
+              # Check if we're the actual installer or the password manager
+              if getattr(sys, "frozen", False) and len(sys.argv) > 1 and sys.argv[1] == "--install":
+                  root = tk.Tk()
+                  app = InstallerGUI(root)
+                  root.mainloop()
+              else:
+                  # This is the actual application, not the installer
+                  # Here we'd typically import and run the main password manager code
+                  import password_manager
+                  password_manager.main()
+          "@
+          
+          Set-Content -Path "installer_script.py" -Value $InstallerScript
+        shell: pwsh
+
+      - name: 🔧 Modify Main Script for Installer Support
+        run: |
+          $MainScript = Get-Content -Path password_manager.py -Raw
+          $NewScript = @"
+          import sys
+          import os
+
+          # Check if we're running as installer
+          if len(sys.argv) > 1 and sys.argv[1] == "--install":
+              # Import and run installer
+              from installer_script import *
+              if __name__ == "__main__":
+                  root = tk.Tk()
+                  app = InstallerGUI(root)
+                  root.mainloop()
+          else:
+              # Original password manager code
+              $MainScript
+          "@
+          
+          Set-Content -Path "password_manager_with_installer.py" -Value $NewScript
+        shell: pwsh
 
       - name: 🛠️ Build EXE with PyInstaller
         run: |
-          pyinstaller --noconfirm --onefile --windowed password_manager.py
-        timeout-minutes: 10 
+          pyinstaller --noconfirm --onefile --windowed --uac-admin `
+            --name "password_manager_installer" `
+            --version-file=version_info.txt `
+            --icon=NONE `
+            --add-data "password_manager.py;." `
+            password_manager_with_installer.py
+          
+          pyinstaller --noconfirm --onefile --windowed `
+            --name "password_manager" `
+            --version-file=version_info.txt `
+            --icon=NONE `
+            password_manager.py
+        timeout-minutes: 10
 
-      - name: 📁 Rename & Move EXE
+      - name: 🔒 Sign EXE Files (Self-Signed for Testing)
+        run: |
+          # Create self-signed certificate for testing
+          New-SelfSignedCertificate -Subject "CN=PasswordManagerApp" -Type CodeSigning -CertStoreLocation cert:\CurrentUser\My
+
+          # Export the certificate
+          $cert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Where-Object {$_.Subject -eq "CN=PasswordManagerApp"} | Select-Object -First 1
+          
+          # Sign both executables
+          if ($cert) {
+            Set-AuthenticodeSignature -FilePath "dist\password_manager_installer.exe" -Certificate $cert
+            Set-AuthenticodeSignature -FilePath "dist\password_manager.exe" -Certificate $cert
+            Write-Host "Files signed successfully with self-signed certificate"
+          } else {
+            Write-Host "Warning: Could not sign executables, certificate not found"
+          }
+        continue-on-error: true
+        shell: pwsh
+
+      - name: 📁 Create Final Package
         run: |
           mkdir -p dist_output
-          cp dist/password_manager.exe dist_output/password-manager-${{ github.ref_name }}.exe
+          
+          # Create installer package that includes a readme
+          $readme = @"
+          # Password Manager v${{ env.VERSION }}
+
+          ## Installation Instructions
+          1. Run password_manager_installer.exe
+          2. Choose your installation directory
+          3. Follow the on-screen instructions
+
+          ## Features
+          - 🔐 Improved encryption security
+          - 📁 Folder-based password grouping
+          - 🌐 Language support: English & Indonesian
+          - 🐛 Bug fixes and UX improvements
+          - ✅ Full offline password manager
+
+          ## Requirements
+          - Windows 10 or higher
+          - 50MB free disk space
+
+          ## Contact
+          For support, please visit: https://github.com/yourusername/password-manager/issues
+          "@
+          
+          Set-Content -Path "README.md" -Value $readme
+          
+          # Create zip file with installer and documentation
+          Compress-Archive -Path "dist\password_manager_installer.exe","README.md" -DestinationPath "dist_output\password-manager-installer-${{ env.VERSION }}.zip"
+          
+          # Copy standalone exe for those who prefer direct use
+          Copy-Item "dist\password_manager.exe" -Destination "dist_output\password-manager-standalone-${{ env.VERSION }}.exe"
+        shell: pwsh
 
       - name: 🚀 Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Password Manager v${{ github.ref_name }}"
+          name: "Password Manager ${{ github.ref_name }}"
           tag_name: ${{ github.ref_name }}
           body: |
-            🚀 **New Release: ${{ github.ref_name }}**
-
-            ✅ Changes:
+            # 🚀 Password Manager ${{ github.ref_name }}
+            
+            ## What's New
             - 🔐 Improved encryption security
             - 📁 Folder-based password grouping
             - 🌐 Language support: English & Indonesian
             - 🐛 Bug fixes and UX improvements
             - ✅ Full offline password manager
 
-            💾 **Download the EXE below** and run it on your system. All data stays offline.
+            ## Download Options
+            - **Recommended:** Download the installer package (ZIP) which includes a setup wizard
+            - Alternative: Download the standalone executable if you prefer portable use
+
+            ## Antivirus Note
+            If Windows Defender or your antivirus flags the application, this is due to the application being built with PyInstaller and not being widely distributed yet. The application is safe to use and contains no malicious code.
+
+            To reduce false positives:
+            1. The EXE now includes proper version information
+            2. Files are signed with a certificate (though self-signed in this build)
+            3. Installer provides proper Windows integration
+
+            ## Installation
+            Extract the ZIP and run the installer to choose your installation path.
             
             ---
             🔒 Stay safe and don't forget to choose a strong master password!
-          files: dist_output/password-manager-${{ github.ref_name }}.exe
+          files: |
+            dist_output/password-manager-installer-${{ env.VERSION }}.zip
+            dist_output/password-manager-standalone-${{ env.VERSION }}.exe
           draft: false
           prerelease: false
         env:
