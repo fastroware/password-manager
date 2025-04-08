@@ -108,6 +108,8 @@ This application supports multiple languages. Currently available languages:
 
 - English (en)
 - Indonesian (id)
+- Arabic (ar)
+- Hindi (hi)
 
 Switch languages using the language selector at the bottom of the application.
 
