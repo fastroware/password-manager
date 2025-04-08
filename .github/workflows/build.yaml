@@ -1,22 +1,22 @@
-name: Build Windows EXE
+name: Build & Release EXE
 
 on:
   push:
     tags:
-      - 'v*'  # Contoh: push tag v1.0.1 untuk build versi itu
+      - 'v*' # Contoh: v1.0.0
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
@@ -24,13 +24,35 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build EXE
+      - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --noconsole password_manager.py
+          pyinstaller --noconfirm --onefile password_manager.py
+        shell: bash
 
-      - name: Upload EXE to Release
+      - name: Rename EXE
+        run: |
+          mkdir dist_output
+          copy dist\password_manager.exe dist_output\password-manager-${{ github.ref_name }}.exe
+
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/password_manager.exe
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            🚀 **New Release: ${{ github.ref_name }}**
+
+            ✅ Changes:
+            - 🔐 Improved encryption security
+            - 📁 Folder-based password grouping
+            - 🌐 Language support: English & Indonesian
+            - 🐛 Bug fixes and UX improvements
+            - ✅ Full offline password manager
+
+            💾 **Download the EXE below** and run it on your system. All data stays offline.
+            
+            ---
+            🔒 Stay safe and don't forget to choose a strong master password!
+          files: dist_output/password-manager-${{ github.ref_name }}.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
