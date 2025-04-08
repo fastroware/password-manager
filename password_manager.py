@@ -222,6 +222,94 @@ class PasswordManager:
 
         with open(os.path.join(lang_dir, "lang-id.json"), "w", encoding="utf-8") as f:
             json.dump(indonesian, f, ensure_ascii=False, indent=4)
+            
+        arabic = {
+            "login": "تسجيل الدخول",
+            "register": "تسجيل",
+            "username": "اسم المستخدم",
+            "password": "كلمة المرور",
+            "confirm_password": "تأكيد كلمة المرور",
+            "submit": "إرسال",
+            "create_account": "إنشاء حساب",
+            "back_to_login": "العودة إلى تسجيل الدخول",
+            "logout": "تسجيل الخروج",
+            "welcome": "مرحباً",
+            "add_folder": "إضافة مجلد",
+            "enter_folder_name": "أدخل اسم المجلد:",
+            "folder_name": "اسم المجلد",
+            "delete": "حذف",
+            "edit": "تعديل",
+            "add_password": "إضافة كلمة مرور",
+            "save": "حفظ",
+            "cancel": "إلغاء",
+            "site_name": "اسم الموقع",
+            "url": "الرابط",
+            "email": "البريد الإلكتروني",
+            "notes": "ملاحظات",
+            "show": "عرض",
+            "hide": "إخفاء",
+            "confirm_delete": "هل أنت متأكد أنك تريد الحذف؟",
+            "yes": "نعم",
+            "no": "لا",
+            "language": "اللغة",
+            "search": "بحث",
+            "password_manager": "مدير كلمات المرور",
+            "back": "عودة",
+            "copy": "تم النسخ إلى الحافظة",
+            "generate_password": "توليد كلمة مرور",
+            "password_strength": "قوة كلمة المرور",
+            "weak": "ضعيف",
+            "medium": "متوسط",
+            "strong": "قوي",
+            "folders": "المجلدات",
+        }
+
+        with open(os.path.join(lang_dir, "lang-ar.json"), "w", encoding="utf-8") as f:
+            json.dump(arabic, f, ensure_ascii=False, indent=4)
+    
+        hindi = {
+            "login": "लॉगिन करें",
+            "register": "पंजीकरण करें",
+            "username": "उपयोगकर्ता नाम",
+            "password": "पासवर्ड",
+            "confirm_password": "पासवर्ड की पुष्टि करें",
+            "submit": "जमा करें",
+            "create_account": "खाता बनाएं",
+            "back_to_login": "लॉगिन पर वापस जाएं",
+            "logout": "लॉगआउट",
+            "welcome": "स्वागत है",
+            "add_folder": "फ़ोल्डर जोड़ें",
+            "enter_folder_name": "फ़ोल्डर का नाम दर्ज करें:",
+            "folder_name": "फ़ोल्डर का नाम",
+            "delete": "हटाएं",
+            "edit": "संपादित करें",
+            "add_password": "पासवर्ड जोड़ें",
+            "save": "सहेजें",
+            "cancel": "रद्द करें",
+            "site_name": "साइट का नाम",
+            "url": "यूआरएल",
+            "email": "ईमेल",
+            "notes": "टिप्पणियाँ",
+            "show": "दिखाएं",
+            "hide": "छिपाएं",
+            "confirm_delete": "क्या आप वाकई इसे हटाना चाहते हैं?",
+            "yes": "हाँ",
+            "no": "नहीं",
+            "language": "भाषा",
+            "search": "खोजें",
+            "password_manager": "पासवर्ड प्रबंधक",
+            "back": "वापस",
+            "copy": "क्लिपबोर्ड पर कॉपी किया गया",
+            "generate_password": "पासवर्ड बनाएं",
+            "password_strength": "पासवर्ड की ताकत",
+            "weak": "कमज़ोर",
+            "medium": "मध्यम",
+            "strong": "मजबूत",
+            "folders": "फ़ोल्डर",
+        }
+        
+        with open(os.path.join(lang_dir, "lang-hi.json"), "w", encoding="utf-8") as f:
+            json.dump(hindi, f, ensure_ascii=False, indent=4)
 
     def get_text(self, key):
         """Get text based on current language"""
